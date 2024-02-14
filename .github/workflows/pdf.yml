@@ -5,5 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run a multi-line script
+        env: 
+          PAYLOAD: ${{github.event.repository_dispatch.client_payload}}
         run: |
-          echo repository_dispatch.client_payload.test
+          echo "$PAYLOAD"
