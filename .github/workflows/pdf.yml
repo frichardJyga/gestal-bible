@@ -4,7 +4,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Run a multi-line script
+      - name: display client_payload
         run: |
-          echo "payload: ${{ github.event.client_payload.test }}\ntest: ${{ github.event.client_payload.test }}"
-          echo 
+          echo "payload: ${{ github.event.client_payload }}"
