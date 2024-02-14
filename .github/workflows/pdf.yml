@@ -6,4 +6,5 @@ jobs:
     steps:
       - name: display client_payload
         run: |
-          echo "payload: ${{ github.event.client_payload }}"
+          echo "${{ github.event.client_payload }}"
+          echo "${{ github.event.client_payload.content }}"
