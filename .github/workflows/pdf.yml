@@ -6,8 +6,8 @@ jobs:
     steps:
       - name: Run a multi-line script
         env: 
-          PAYLOAD: ${{github.event.client_payload}}
+          PAYLOAD: ${{}}
           PAYLOADTEST: ${{github.event.client_payload.test}}
         run: |
-          echo "$PAYLOAD"
-          echo "$PAYLOADTEST"
+          echo "payload: ${{ github.event.client_payload.test }}\ntest: ${{ github.event.client_payload.test }}"
+          echo 
