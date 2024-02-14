@@ -1,0 +1,9 @@
+name: pdf
+on: [repository_dispatch, workflow_dispatch]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run a multi-line script
+        run: |
+          echo etstestestestestest
