@@ -6,4 +6,4 @@ jobs:
     steps:
       - name: Run a multi-line script
         run: |
-          echo etstestestestestest
+          echo repository_dispatch.client_payload.test
