@@ -14,10 +14,9 @@ jobs:
 
       - name: Create new file from dispatch event
         run: |
-          mkdir -p path/to/subfolder
-          echo "${{ github.event.client_payload.file_content }}" | base64 -d > path/to/subfolder/${{ github.event.client_payload.file_name }}
+          echo "${{ github.event.client_payload.file_content }}" | base64 -d > ${{ github.event.client_payload.file_name }}
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           git add .
           git commit -m "Add new file from SharePoint"
-          git push origin sharepoint-test
+          git push origin sharepoint
