@@ -14,6 +14,19 @@ jobs:
         with:
           ref: sharepoint
 
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
+          sudo apt-add-repository https://cli.github.com/packages
+          sudo apt-get update
+          sudo apt-get install gh -y
+
+      - name: Authenticate with GitHub CLI
+        env:
+          ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
+        run: |
+          echo $ACTIONS_PAT | gh auth login --with-token
+
       - name: Create new file from dispatch event
         run: |
           SUBFOLDER_PATH="docs/.vuepress/public/doc" # Replace with the actual subfolder path
@@ -24,9 +37,9 @@ jobs:
           git add .
           git commit -m "Add new file from SharePoint"
 
-      - name: Push changes
+      - name: Push changes using GitHub CLI
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
-          git remote set-url origin https://$ACTIONS_PAT@github.com/frichardJyga/gestal-bible.git
+          gh auth status
           git push origin sharepoint
