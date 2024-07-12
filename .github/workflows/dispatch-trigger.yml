@@ -19,8 +19,6 @@ jobs:
           SUBFOLDER_PATH="docs/.vuepress/public/doc"
           mkdir -p $SUBFOLDER_PATH
           echo "${{ github.event.client_payload.file_content }}" | base64 -d > $SUBFOLDER_PATH/${{ github.event.client_payload.file_name }}
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
           git add .
           git commit -m "Add new file from SharePoint"
           git push origin sharepoint
