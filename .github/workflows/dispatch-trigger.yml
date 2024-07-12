@@ -28,5 +28,6 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
+          git config --unset-all http.https://github.com/.extraheader || true
           git config --global http.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${ACTIONS_PAT} | base64 --wrap=0)"
           git push origin sharepoint
