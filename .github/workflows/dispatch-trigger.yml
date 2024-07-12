@@ -28,4 +28,5 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
-          git push https://$ACTIONS_PAT@github.com/frichardJyga/gestal-bible.git sharepoint
+          git remote set-url origin https://$ACTIONS_PAT@github.com/frichardJyga/gestal-bible.git
+          git push origin sharepoint
