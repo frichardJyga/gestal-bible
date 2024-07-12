@@ -16,25 +16,21 @@ jobs:
 
       - name: Create new file from dispatch event
         run: |
-          # Define the base path and folder path from the event payload
           BASE_PATH="Encyclopedia/Documents/Clé Gestal - Gestal Drive/Clé Gestal - Gestal Drive/document"
           SUBFOLDER_PATH="${BASE_PATH}/${{ github.event.client_payload.folder_path }}" # Adjust folder path based on event payload
           
-          # Replace spaces in the file name with hyphens
           ORIGINAL_FILE_NAME="${{ github.event.client_payload.file_name }}"
           RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')
           
-          # Create the subfolder path if it does not exist
           mkdir -p "$SUBFOLDER_PATH"
           
-          # Decode the base64 content and write it to the specified path and file name
+          FILE_CONTENT="${{ github.event.client_payload.file_content }}"
+          
           echo "$FILE_CONTENT" | base64 -d > "$SUBFOLDER_PATH/$RENAMED_FILE_NAME"
           
-          # Configure git with user details
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           
-          # Add the new file to the Git index and commit it
           git add .
           git commit -m "Add new file from SharePoint"
 
