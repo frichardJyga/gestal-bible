@@ -16,8 +16,8 @@ jobs:
 
       - name: Create new file from dispatch event
         run: |
-          BASE_PATH="Encyclopedia/Documents/Clé Gestal - Gestal Drive/Clé Gestal - Gestal Drive/document"
-          SUBFOLDER_PATH="${BASE_PATH}/${{ github.event.client_payload.folder_path }}" # Adjust folder path based on event payload
+          BASE_PATH="docs/.vuepress/public/doc"
+          SUBFOLDER_PATH="${BASE_PATH}/${{ github.event.client_payload.folder_path }}"
           
           ORIGINAL_FILE_NAME="${{ github.event.client_payload.file_name }}"
           RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')
