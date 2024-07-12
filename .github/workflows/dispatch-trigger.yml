@@ -16,11 +16,16 @@ jobs:
 
       - name: Create new file from dispatch event
         run: |
-          SUBFOLDER_PATH="docs/.vuepress/public/doc"
+          SUBFOLDER_PATH="docs/.vuepress/public/doc" # Replace with the actual subfolder path
           mkdir -p $SUBFOLDER_PATH
           echo "${{ github.event.client_payload.file_content }}" | base64 -d > $SUBFOLDER_PATH/${{ github.event.client_payload.file_name }}
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           git add .
           git commit -m "Add new file from SharePoint"
-          git push origin sharepoint
+
+      - name: Push changes
+        env:
+          ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
+        run: |
+          git push https://$ACTIONS_PAT@github.com/frichardJyga/gestal-bible.git sharepoint
