@@ -26,6 +26,10 @@ jobs:
           
           FILE_CONTENT="${{ github.event.client_payload.file_content }}"
           
+          if [ -z "$FILE_CONTENT" ]; then
+            FILE_CONTENT=""
+          fi
+          
           echo "$FILE_CONTENT" | base64 -d > "$SUBFOLDER_PATH/$RENAMED_FILE_NAME"
           
           git config --global user.name 'github-actions'
@@ -41,3 +45,14 @@ jobs:
           git config --unset-all http.https://github.com/.extraheader || true
           git config --global http.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${ACTIONS_PAT} | base64 --wrap=0)"
           git push origin sharepoint
+
+      - name: Create Pull Request
+        env:
+          ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
+        run: |
+          PR_TITLE="Add new file from SharePoint"
+          PR_BODY="This PR adds a new file from SharePoint."
+          BASE_BRANCH="main"
+          HEAD_BRANCH="sharepoint"
+
+          curl -X POST -H "Authorization: token ${ACTIONS_PAT}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/frichardJyga/gestal-bible/pulls -d '{"title":"'"${PR_TITLE}"'","body":"'"${PR_BODY}"'","head":"'"${HEAD_BRANCH}"'","base":"'"${BASE_BRANCH}"'"}'
