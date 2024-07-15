@@ -30,7 +30,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           JWT_ASSERTION=$(openssl req -new -key JygaSharepoint.pem -subj "/CN=${AZURE_CLIENT_ID}" | base64 -w 0)
-          response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://<your-tenant>.sharepoint.com/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
+          response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://jygaconcept.sharepoint.com/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
           echo "::set-output name=access_token::$(echo $response | jq -r .access_token)"
 
       - name: Download file from SharePoint
