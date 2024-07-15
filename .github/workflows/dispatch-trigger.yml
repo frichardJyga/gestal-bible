@@ -50,8 +50,8 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
-          PR_TITLE="Add new file from SharePoint"
-          PR_BODY="This PR adds a new file from SharePoint."
+          PR_TITLE="Add new file: ${RENAMED_FILE_NAME}"
+          PR_BODY="This PR adds a new file in: ${SUBFOLDER_PATH}."
           BASE_BRANCH="main"
           HEAD_BRANCH="sharepoint"
 
