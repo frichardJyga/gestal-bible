@@ -1,4 +1,4 @@
-name: Dispatch Trigger Workflow
+name: Secure Fetch File from SharePoint
 
 on:
   repository_dispatch:
@@ -14,23 +14,41 @@ jobs:
         with:
           ref: sharepoint
 
-      - name: Create new file from dispatch event
+      - name: Setup certificate
+        id: setup_cert
+        env:
+          AZURE_CERT_PFX_BASE64: ${{ secrets.AZURE_CERT_PFX_BASE64 }}
+          AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
+        run: |
+          echo "${AZURE_CERT_PFX_BASE64}" | base64 -d > JygaSharepoint.pfx
+          openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
+
+      - name: Obtain SharePoint Access Token
+        id: get_token
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          JWT_ASSERTION=$(openssl req -new -key JygaSharepoint.pem -subj "/CN=${AZURE_CLIENT_ID}" | base64 -w 0)
+          response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://<your-tenant>.sharepoint.com/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
+          echo "::set-output name=access_token::$(echo $response | jq -r .access_token)"
+
+      - name: Download file from SharePoint
+        env:
+          SHAREPOINT_TOKEN: ${{ steps.get_token.outputs.access_token }}
+          SHAREPOINT_SITE: "https://jygaconcept.sharepoint.com/sites/TestBibliothque"
         run: |
           BASE_PATH="docs/.vuepress/public/doc"
           SUBFOLDER_PATH="${BASE_PATH}/${{ github.event.client_payload.folder_path }}"
           
           ORIGINAL_FILE_NAME="${{ github.event.client_payload.file_name }}"
-          RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')
-          
+          RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')          
+          SHAREPOINT_PATH="/Encyclopedia/Documents/Clé Gestal - Gestal Drive/Clé Gestal - Gestal Drive/document/${{ github.event.client_payload.folder_path }}"
+
           mkdir -p "$SUBFOLDER_PATH"
-          
-          FILE_CONTENT="${{ github.event.client_payload.file_content }}"
-          
-          if [ -z "$FILE_CONTENT" ]; then
-            FILE_CONTENT=""
-          fi
-          
-          echo "$FILE_CONTENT" | base64 -d > "$SUBFOLDER_PATH/$RENAMED_FILE_NAME"
+
+          # Download the file from SharePoint
+          curl -L -o "$SUBFOLDER_PATH/$RENAMED_FILE_NAME" -H "Authorization: Bearer $SHAREPOINT_TOKEN" "$SHAREPOINT_SITE/_api/web/GetFolderByServerRelativeUrl('$SHAREPOINT_PATH')/Files('$ORIGINAL_FILE_NAME')/\$value"
           
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
@@ -51,8 +69,8 @@ jobs:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
           PR_TITLE="Add new file: ${RENAMED_FILE_NAME}"
-          PR_BODY="This PR adds a new file in: ${SUBFOLDER_PATH}."
-          BASE_BRANCH="main"
+          PR_BODY="This PR adds a new file at path: ${SUBFOLDER_PATH}."
+          BASE_BRANCH="main"  # Change this to the branch you want to merge into
           HEAD_BRANCH="sharepoint"
 
           curl -X POST -H "Authorization: token ${ACTIONS_PAT}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/frichardJyga/gestal-bible/pulls -d '{"title":"'"${PR_TITLE}"'","body":"'"${PR_BODY}"'","head":"'"${HEAD_BRANCH}"'","base":"'"${BASE_BRANCH}"'"}'
