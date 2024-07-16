@@ -20,8 +20,7 @@ jobs:
           AZURE_CERT_PFX_BASE64: ${{ secrets.AZURE_CERT_PFX_BASE64 }}
           AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
-          echo "${AZURE_CERT_PFX_BASE64}" | base64 -d > JygaSharepoint.pfx
-          openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
+          echo "${{ secrets.AZURE_CERT_PFX_BASE64 }}" | base64 -d > JygaSharepoint.pfx
 
       - name: Install PnP PowerShell
         shell: pwsh
@@ -43,8 +42,6 @@ jobs:
 
       - name: Download file from SharePoint
         shell: pwsh
-        env:
-          SHAREPOINT_TOKEN: ${{ steps.get_token.outputs.access_token }}
         run: |
           $githubBasePath = "docs/.vuepress/public/doc"
           $githubFolderPath = "${{ github.event.client_payload.github_folder_path }}"
@@ -80,8 +77,8 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
-          PR_TITLE="Add new file: $RENAMED_FILE_NAME"
-          PR_BODY="This PR adds $RENAMED_FILE_NAME in : $GITHUB_PATH."
+          PR_TITLE="Add new file: $renamedFileName"
+          PR_BODY="This PR adds $renamedFileName in : $githubPath."
           BASE_BRANCH="main"
           HEAD_BRANCH="sharepoint"
           curl -X POST -H "Authorization: token ${ACTIONS_PAT}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/frichardJyga/gestal-bible/pulls -d '{"title":"'"${PR_TITLE}"'","body":"'"${PR_BODY}"'","head":"'"${HEAD_BRANCH}"'","base":"'"${BASE_BRANCH}"'"}'
