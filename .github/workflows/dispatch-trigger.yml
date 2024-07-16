@@ -38,17 +38,17 @@ jobs:
           SHAREPOINT_TOKEN: ${{ env.access_token }}
           SHAREPOINT_SITE: "https://jygaconcept.sharepoint.com/sites/TestBibliothque"
         run: |
-          BASE_PATH="docs/.vuepress/public/doc"
-          SUBFOLDER_PATH="${BASE_PATH}/${{ github.event.client_payload.folder_path }}"
+          GITHUB_BASE_PATH="docs/.vuepress/public/doc"
+          GITHUB_PATH="${GITHUB_BASE_PATH}/${{ github.event.client_payload.github_folder_path }}"
           
           ORIGINAL_FILE_NAME="${{ github.event.client_payload.file_name }}"
           RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')          
-          SHAREPOINT_PATH="/sites/TestBibliothque/Encyclopedia/Documents/Clé Gestal - Gestal Drive/Clé Gestal - Gestal Drive/document/${{ github.event.client_payload.folder_path }}"
+          SHAREPOINT_PATH="/sites/TestBibliothque/${{ github.event.client_payload.sharepoint_folder_path }}"
 
-          mkdir -p "$SUBFOLDER_PATH"
+          mkdir -p "$GITHUB_PATH"
 
           # Download the file from SharePoint
-          curl -L -o "$SUBFOLDER_PATH/$RENAMED_FILE_NAME" -H "Authorization: Bearer $SHAREPOINT_TOKEN" "$SHAREPOINT_SITE/_api/web/GetFolderByServerRelativeUrl('$SHAREPOINT_PATH')/Files('$ORIGINAL_FILE_NAME')/\$value"
+          curl -L -o "$GITHUB_PATH/$RENAMED_FILE_NAME" -H "Authorization: Bearer $SHAREPOINT_TOKEN" "$SHAREPOINT_SITE/_api/web/GetFolderByServerRelativeUrl('$SHAREPOINT_PATH')/Files('$ORIGINAL_FILE_NAME')/\$value"
           
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
@@ -69,8 +69,8 @@ jobs:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
           PR_TITLE="Add new file: ${RENAMED_FILE_NAME}"
-          PR_BODY="This PR adds a new file at path: ${SUBFOLDER_PATH}."
-          BASE_BRANCH="main"  # Change this to the branch you want to merge into
+          PR_BODY="This PR adds ${RENAMED_FILE_NAME} in : ${SUBFOLDER_PATH}."
+          BASE_BRANCH="main"
           HEAD_BRANCH="sharepoint"
 
           curl -X POST -H "Authorization: token ${ACTIONS_PAT}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/frichardJyga/gestal-bible/pulls -d '{"title":"'"${PR_TITLE}"'","body":"'"${PR_BODY}"'","head":"'"${HEAD_BRANCH}"'","base":"'"${BASE_BRANCH}"'"}'
