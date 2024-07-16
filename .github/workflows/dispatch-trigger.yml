@@ -32,8 +32,11 @@ jobs:
         run: |
           echo "Generating JWT assertion"
           
+          # Calculate SHA-1 thumbprint of the certificate
+          THUMBPRINT=$(openssl x509 -in JygaSharepoint.pem -noout -fingerprint -sha1 | awk -F'=' '{print $2}' | sed 's/://g')
+          
           # Define JWT header and payload
-          HEADER=$(echo -n '{"alg":"RS256","typ":"JWT"}' | base64 -w 0)
+          HEADER=$(echo -n '{"alg":"RS256","typ":"JWT","x5t":"'"$THUMBPRINT"'"}' | base64 -w 0)
           PAYLOAD=$(echo -n '{"aud":"https://login.microsoftonline.com/'${AZURE_TENANT_ID}'/oauth2/v2.0/token","iss":"'${AZURE_CLIENT_ID}'","sub":"'${AZURE_CLIENT_ID}'","jti":"'$(uuidgen)'","exp":'$(($(date +%s)+3600))'}' | base64 -w 0)
           
           # Create JWT token
