@@ -20,70 +20,32 @@ jobs:
           AZURE_CERT_PFX_BASE64: ${{ secrets.AZURE_CERT_PFX_BASE64 }}
           AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
-          echo "Decoding and setting up certificate"
           echo "${AZURE_CERT_PFX_BASE64}" | base64 -d > JygaSharepoint.pfx
           openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
+
+      - name: Install PnP PowerShell
+        run: |
+          Install-Module -Name PnP.PowerShell -Force -Scope CurrentUser
+          Import-Module PnP.PowerShell
 
       - name: Obtain SharePoint Access Token
         id: get_token
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
-          echo "Generating JWT assertion"
-          
-          # Calculate SHA-1 thumbprint of the certificate
-          THUMBPRINT=$(openssl x509 -in JygaSharepoint.pem -noout -fingerprint -sha1 | awk -F'=' '{print $2}' | sed 's/://g')
-          
-          # Define JWT header and payload
-          HEADER=$(echo -n '{"alg":"RS256","typ":"JWT","x5t":"'"$THUMBPRINT"'"}' | base64 -w 0)
-          PAYLOAD=$(echo -n '{"aud":"https://login.microsoftonline.com/'${AZURE_TENANT_ID}'/oauth2/v2.0/token","iss":"'${AZURE_CLIENT_ID}'","sub":"'${AZURE_CLIENT_ID}'","jti":"'$(uuidgen)'","exp":'$(($(date +%s)+3600))'}' | base64 -w 0)
-          
-          # Create JWT token
-          JWT_ASSERTION="${HEADER}.${PAYLOAD}"
-          
-          # Sign JWT token
-          SIGNATURE=$(echo -n $JWT_ASSERTION | openssl dgst -sha256 -sign JygaSharepoint.pem | base64 -w 0)
-          JWT_ASSERTION="${JWT_ASSERTION}.${SIGNATURE}"
-          
-          echo "JWT_ASSERTION: $JWT_ASSERTION"
-          
-          echo "Requesting SharePoint access token"
-          response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://jygaconcept.sharepoint.com/.default&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}&grant_type=client_credentials" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
-          
-          echo "Response: $response"
-          
-          access_token=$(echo $response | jq -r .access_token)
-          echo "Access Token: $access_token"
-          echo "access_token=$access_token" >> $GITHUB_ENV
+          $certPath = Join-Path $env:GITHUB_WORKSPACE 'JygaSharepoint.pfx'
+          $thumbprint = (Get-PfxCertificate -FilePath $certPath -Password (ConvertTo-SecureString -String $env:AZURE_CERT_PASSWORD -AsPlainText -Force)).Thumbprint
+          $securePassword = ConvertTo-SecureString -String $env:AZURE_CERT_PASSWORD -AsPlainText -Force
+          Connect-PnPOnline -Url "https://<YourSharePointSite>.sharepoint.com" -ClientId $env:AZURE_CLIENT_ID -Thumbprint $thumbprint -Tenant $env:AZURE_TENANT_ID -CertificatePath $certPath -CertificatePassword $securePassword
 
       - name: Download file from SharePoint
         env:
-          SHAREPOINT_TOKEN: ${{ env.access_token }}
-          SHAREPOINT_SITE: "https://jygaconcept.sharepoint.com/sites/TestBibliothque"
+          SHAREPOINT_TOKEN: ${{ steps.get_token.outputs.access_token }}
         run: |
-          echo "Setting up paths"
-          GITHUB_BASE_PATH="docs/.vuepress/public/doc"
-          GITHUB_PATH="${GITHUB_BASE_PATH}/${{ github.event.client_payload.github_folder_path }}"
-          ORIGINAL_FILE_NAME="${{ github.event.client_payload.file_name }}"
-          RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')
-          SHAREPOINT_PATH="/sites/TestBibliothque/${{ github.event.client_payload.sharepoint_folder_path }}"
-          
-          echo "GITHUB_PATH: $GITHUB_PATH"
-          echo "ORIGINAL_FILE_NAME: $ORIGINAL_FILE_NAME"
-          echo "RENAMED_FILE_NAME: $RENAMED_FILE_NAME"
-          echo "SHAREPOINT_PATH: $SHAREPOINT_PATH"
-          
-          mkdir -p "$GITHUB_PATH"
-
-          echo "Downloading file from SharePoint"
-          curl -L -o "$GITHUB_PATH/$RENAMED_FILE_NAME" -H "Authorization: Bearer $SHAREPOINT_TOKEN" "$SHAREPOINT_SITE/_api/web/GetFolderByServerRelativeUrl('$SHAREPOINT_PATH')/Files('$ORIGINAL_FILE_NAME')/\$value"
-          
-          echo "Setting up git configuration"
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          
-          echo "Adding and committing changes"
+          $filePath = "docs/.vuepress/public/doc/${{ github.event.client_payload.github_folder_path }}/${{ github.event.client_payload.file_name -replace ' ', '-' }}"
+          Get-PnPFile -Url "/sites/TestBibliothque/${{ github.event.client_payload.sharepoint_folder_path }}/${{ github.event.client_payload.file_name }}" -Path $filePath -FileName $filePath -AsFile
           git add .
           git commit -m "Add new file from SharePoint"
 
@@ -91,7 +53,6 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
-          echo "Pushing changes to repository"
           git config --unset-all http.https://github.com/.extraheader || true
           git config --global http.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${ACTIONS_PAT} | base64 --wrap=0)"
           git push origin sharepoint
@@ -100,10 +61,8 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
-          echo "Creating pull request"
-          PR_TITLE="Add new file: ${RENAMED_FILE_NAME}"
-          PR_BODY="This PR adds ${RENAMED_FILE_NAME} in : ${GITHUB_PATH}."
+          PR_TITLE="Add new file: $RENAMED_FILE_NAME"
+          PR_BODY="This PR adds $RENAMED_FILE_NAME in : $GITHUB_PATH."
           BASE_BRANCH="main"
           HEAD_BRANCH="sharepoint"
-          
           curl -X POST -H "Authorization: token ${ACTIONS_PAT}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/frichardJyga/gestal-bible/pulls -d '{"title":"'"${PR_TITLE}"'","body":"'"${PR_BODY}"'","head":"'"${HEAD_BRANCH}"'","base":"'"${BASE_BRANCH}"'"}'
