@@ -41,7 +41,7 @@ jobs:
           $certPath = Join-Path $env:GITHUB_WORKSPACE 'JygaSharepoint.pfx'
           $thumbprint = (Get-PfxCertificate -FilePath $certPath -Password (ConvertTo-SecureString -String $env:AZURE_CERT_PASSWORD -AsPlainText -Force)).Thumbprint
           $securePassword = ConvertTo-SecureString -String $env:AZURE_CERT_PASSWORD -AsPlainText -Force
-          Connect-PnPOnline -Url "https://jygaconcept.sharepoint.com" -ClientId $env:AZURE_CLIENT_ID -Thumbprint $thumbprint -Tenant $env:AZURE_TENANT_ID -CertificatePath $certPath -CertificatePassword $securePassword
+          Connect-PnPOnline -Url https://jygaconcept.sharepoint.com -ClientId $env:AZURE_CLIENT_ID -Thumbprint $thumbprint -Tenant $env:AZURE_TENANT_ID -CertificatePath $certPath -CertificatePassword $securePassword
 
       - name: Download file from SharePoint
         shell: pwsh
