@@ -16,11 +16,11 @@ jobs:
 
       - name: Setup certificate
         id: setup_cert
+        shell: pwsh
         env:
           AZURE_CERT_PFX_BASE64: ${{ secrets.AZURE_CERT_PFX_BASE64 }}
           AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
-          echo "Decoding and setting up certificate"
           echo "${AZURE_CERT_PFX_BASE64}" | base64 -d > JygaSharepoint.pfx
           openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
 
@@ -39,9 +39,8 @@ jobs:
           AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
           $certPath = Join-Path $env:GITHUB_WORKSPACE 'JygaSharepoint.pfx'
-          $thumbprint = (Get-PfxCertificate -FilePath $certPath -Password (ConvertTo-SecureString -String $env:AZURE_CERT_PASSWORD -AsPlainText -Force)).Thumbprint
           $securePassword = ConvertTo-SecureString -String $env:AZURE_CERT_PASSWORD -AsPlainText -Force
-          Connect-PnPOnline -Url https://jygaconcept.sharepoint.com -ClientId $env:AZURE_CLIENT_ID -Thumbprint $thumbprint -Tenant $env:AZURE_TENANT_ID -CertificatePath $certPath -CertificatePassword $securePassword
+          Connect-PnPOnline -Url "https://jygaconcept.sharepoint.com" -ClientId $env:AZURE_CLIENT_ID -Tenant $env:AZURE_TENANT_ID -CertificatePath $certPath -CertificatePassword $securePassword
 
       - name: Download file from SharePoint
         shell: pwsh
