@@ -16,10 +16,12 @@ jobs:
 
       - name: Setup certificate
         id: setup_cert
+        shell: pwsh
         env:
           AZURE_CERT_PFX_BASE64: ${{ secrets.AZURE_CERT_PFX_BASE64 }}
           AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
+          echo "Decoding and setting up certificate"
           echo "${AZURE_CERT_PFX_BASE64}" | base64 -d > JygaSharepoint.pfx
           openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
 
@@ -31,6 +33,7 @@ jobs:
 
       - name: Obtain SharePoint Access Token
         id: get_token
+        shell: pwsh
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -42,6 +45,7 @@ jobs:
           Connect-PnPOnline -Url "https://<YourSharePointSite>.sharepoint.com" -ClientId $env:AZURE_CLIENT_ID -Thumbprint $thumbprint -Tenant $env:AZURE_TENANT_ID -CertificatePath $certPath -CertificatePassword $securePassword
 
       - name: Download file from SharePoint
+        shell: pwsh
         env:
           SHAREPOINT_TOKEN: ${{ steps.get_token.outputs.access_token }}
         run: |
