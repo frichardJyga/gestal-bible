@@ -44,8 +44,25 @@ jobs:
         env:
           SHAREPOINT_TOKEN: ${{ steps.get_token.outputs.access_token }}
         run: |
-          $filePath = "docs/.vuepress/public/doc/${{ github.event.client_payload.github_folder_path }}/${{ github.event.client_payload.file_name -replace ' ', '-' }}"
-          Get-PnPFile -Url "/sites/TestBibliothque/${{ github.event.client_payload.sharepoint_folder_path }}/${{ github.event.client_payload.file_name }}" -Path $filePath -FileName $filePath -AsFile
+          $githubBasePath = "docs/.vuepress/public/doc"
+          $githubFolderPath = "${{ github.event.client_payload.github_folder_path }}"
+          $originalFileName = "${{ github.event.client_payload.file_name }}"
+          $renamedFileName = $originalFileName -replace ' ', '-'
+          $sharepointFolderPath = "${{ github.event.client_payload.sharepoint_folder_path }}"
+
+          $githubPath = Join-Path -Path $githubBasePath -ChildPath $githubFolderPath
+          $filePath = Join-Path -Path $githubPath -ChildPath $renamedFileName
+
+          Write-Host "GITHUB_PATH: $githubPath"
+          Write-Host "ORIGINAL_FILE_NAME: $originalFileName"
+          Write-Host "RENAMED_FILE_NAME: $renamedFileName"
+          Write-Host "SHAREPOINT_PATH: $sharepointFolderPath"
+
+          mkdir -p "$githubPath"
+
+          Write-Host "Downloading file from SharePoint"
+          Get-PnPFile -Url "/sites/TestBibliothque/$sharepointFolderPath/$originalFileName" -Path $filePath -AsFile
+
           git add .
           git commit -m "Add new file from SharePoint"
 
