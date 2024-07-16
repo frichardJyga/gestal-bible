@@ -24,6 +24,7 @@ jobs:
           openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
 
       - name: Install PnP PowerShell
+        shell: pwsh
         run: |
           Install-Module -Name PnP.PowerShell -Force -Scope CurrentUser
           Import-Module PnP.PowerShell
