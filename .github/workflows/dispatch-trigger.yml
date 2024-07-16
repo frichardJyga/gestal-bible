@@ -20,6 +20,7 @@ jobs:
           AZURE_CERT_PFX_BASE64: ${{ secrets.AZURE_CERT_PFX_BASE64 }}
           AZURE_CERT_PASSWORD: ${{ secrets.AZURE_CERT_PASSWORD }}
         run: |
+          echo "Decoding and setting up certificate"
           echo "${AZURE_CERT_PFX_BASE64}" | base64 -d > JygaSharepoint.pfx
           openssl pkcs12 -in JygaSharepoint.pfx -out JygaSharepoint.pem -passin pass:${AZURE_CERT_PASSWORD} -nodes
 
@@ -29,30 +30,45 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
+          echo "Generating JWT assertion"
           JWT_ASSERTION=$(openssl req -new -key JygaSharepoint.pem -subj "/CN=${AZURE_CLIENT_ID}" | base64 -w 0)
+          echo "JWT_ASSERTION: $JWT_ASSERTION"
+          
+          echo "Requesting SharePoint access token"
           response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://jygaconcept.sharepoint.com/.default&client_secret=${AZURE_CERT_PASSWORD}&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
-          echo "access_token=$(echo $response | jq -r .access_token)" >> $GITHUB_ENV
+          echo "Response: $response"
+          
+          access_token=$(echo $response | jq -r .access_token)
+          echo "Access Token: $access_token"
+          echo "access_token=$access_token" >> $GITHUB_ENV
 
       - name: Download file from SharePoint
         env:
           SHAREPOINT_TOKEN: ${{ env.access_token }}
           SHAREPOINT_SITE: "https://jygaconcept.sharepoint.com/sites/TestBibliothque"
         run: |
+          echo "Setting up paths"
           GITHUB_BASE_PATH="docs/.vuepress/public/doc"
           GITHUB_PATH="${GITHUB_BASE_PATH}/${{ github.event.client_payload.github_folder_path }}"
-          
           ORIGINAL_FILE_NAME="${{ github.event.client_payload.file_name }}"
-          RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')          
+          RENAMED_FILE_NAME=$(echo "${ORIGINAL_FILE_NAME}" | tr ' ' '-')
           SHAREPOINT_PATH="/sites/TestBibliothque/${{ github.event.client_payload.sharepoint_folder_path }}"
-
+          
+          echo "GITHUB_PATH: $GITHUB_PATH"
+          echo "ORIGINAL_FILE_NAME: $ORIGINAL_FILE_NAME"
+          echo "RENAMED_FILE_NAME: $RENAMED_FILE_NAME"
+          echo "SHAREPOINT_PATH: $SHAREPOINT_PATH"
+          
           mkdir -p "$GITHUB_PATH"
 
-          # Download the file from SharePoint
+          echo "Downloading file from SharePoint"
           curl -L -o "$GITHUB_PATH/$RENAMED_FILE_NAME" -H "Authorization: Bearer $SHAREPOINT_TOKEN" "$SHAREPOINT_SITE/_api/web/GetFolderByServerRelativeUrl('$SHAREPOINT_PATH')/Files('$ORIGINAL_FILE_NAME')/\$value"
           
+          echo "Setting up git configuration"
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           
+          echo "Adding and committing changes"
           git add .
           git commit -m "Add new file from SharePoint"
 
@@ -60,6 +76,7 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
+          echo "Pushing changes to repository"
           git config --unset-all http.https://github.com/.extraheader || true
           git config --global http.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${ACTIONS_PAT} | base64 --wrap=0)"
           git push origin sharepoint
@@ -68,9 +85,10 @@ jobs:
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
+          echo "Creating pull request"
           PR_TITLE="Add new file: ${RENAMED_FILE_NAME}"
           PR_BODY="This PR adds ${RENAMED_FILE_NAME} in : ${GITHUB_PATH}."
           BASE_BRANCH="main"
           HEAD_BRANCH="sharepoint"
-
+          
           curl -X POST -H "Authorization: token ${ACTIONS_PAT}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/frichardJyga/gestal-bible/pulls -d '{"title":"'"${PR_TITLE}"'","body":"'"${PR_BODY}"'","head":"'"${HEAD_BRANCH}"'","base":"'"${BASE_BRANCH}"'"}'
