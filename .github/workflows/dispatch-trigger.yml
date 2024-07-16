@@ -31,11 +31,23 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           echo "Generating JWT assertion"
-          JWT_ASSERTION=$(openssl req -new -key JygaSharepoint.pem -subj "/CN=${AZURE_CLIENT_ID}" | base64 -w 0)
+          
+          # Define JWT header and payload
+          HEADER=$(echo -n '{"alg":"RS256","typ":"JWT"}' | base64 -w 0)
+          PAYLOAD=$(echo -n '{"aud":"https://login.microsoftonline.com/'${AZURE_TENANT_ID}'/oauth2/v2.0/token","iss":"'${AZURE_CLIENT_ID}'","sub":"'${AZURE_CLIENT_ID}'","jti":"'$(uuidgen)'","exp":'$(($(date +%s)+3600))'}' | base64 -w 0)
+          
+          # Create JWT token
+          JWT_ASSERTION="${HEADER}.${PAYLOAD}"
+          
+          # Sign JWT token
+          SIGNATURE=$(echo -n $JWT_ASSERTION | openssl dgst -sha256 -sign JygaSharepoint.pem | base64 -w 0)
+          JWT_ASSERTION="${JWT_ASSERTION}.${SIGNATURE}"
+          
           echo "JWT_ASSERTION: $JWT_ASSERTION"
           
           echo "Requesting SharePoint access token"
-          response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://jygaconcept.sharepoint.com/.default&client_secret=${AZURE_CERT_PASSWORD}&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
+          response=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=${AZURE_CLIENT_ID}&scope=https://jygaconcept.sharepoint.com/.default&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=${JWT_ASSERTION}&grant_type=client_credentials" "https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token")
+          
           echo "Response: $response"
           
           access_token=$(echo $response | jq -r .access_token)
