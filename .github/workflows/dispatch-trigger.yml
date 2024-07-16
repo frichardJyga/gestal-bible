@@ -69,7 +69,7 @@ jobs:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
         run: |
           PR_TITLE="Add new file: ${RENAMED_FILE_NAME}"
-          PR_BODY="This PR adds ${RENAMED_FILE_NAME} in : ${SUBFOLDER_PATH}."
+          PR_BODY="This PR adds ${RENAMED_FILE_NAME} in : ${GITHUB_PATH}."
           BASE_BRANCH="main"
           HEAD_BRANCH="sharepoint"
 
